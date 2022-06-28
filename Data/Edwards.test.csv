@@ -1,0 +1,16 @@
+uniqueID,Electrical,HeatingQC,BsmtQual,Foundation,RoofMatl,OverallCond,YearBuilt,Utilities,WoodDeckSF,LotInfo,BsmtFinSF1,SaleType,BedroomAbvGr,KitchenQual,HalfBath,RoofStyle,GrLivArea,OpenPorchSF,Heating,Fireplaces,BldgType,OverallQual,BsmtCond,KitchenAbvGr,FullBath,PavedDrive,YrSold,GarageType,CentralAir,Exterior,HouseStyle,TotRmsAbvGrd,BsmtFinType1
+House.31,SBrkr,TA,,CBlock,CompShg,5,1965,AllPub,0,Inside;Reg;9825;75,0,WD,4,TA,0,notGable,1664,0,GasA,0,Duplex,5,NA,2,2,Y,2010,,N,OtherSd;TA;TA,1Story,8,
+House.32,Fuse,Ex,TA,CBlock,CompShg,6,1956,AllPub,0,Inside;Reg;17140;NA,1059,WD,3,TA,0,Gable,1229,0,GasA,0,1Fam,4,TA,1,1,Y,2009,Attchd,Y,VinylSd;TA;TA,1Story,6,ALQ
+House.33,SBrkr,Ex,Gd,PConc,CompShg,5,2004,AllPub,0,Inside;Reg;2522;24,0,WD,3,Gd,0,Gable,1709,40,GasA,0,Twnhs,6,TA,1,2,Y,2006,Detchd,Y,VinylSd;TA;Gd,2Story,7,Unf
+House.34,SBrkr,Gd,TA,CBlock,CompShg,6,1965,AllPub,736,Inside;Reg;9937;75,830,WD,3,TA,1,Gable,1256,68,GasA,0,1Fam,5,TA,1,1,Y,2008,Attchd,Y,OtherSd;TA;Gd,1Story,6,BLQ
+House.35,Fuse,TA,TA,CBlock,CompShg,3,1958,AllPub,0,Inside;Reg;9571;68,0,notWD,3,TA,0,Gable,1276,0,GasA,0,1Fam,5,NA,1,1,Y,2009,Attchd,Y,OtherSd;TA;TA,1Story,5,Unf
+House.36,SBrkr,Ex,TA,BrkTil,CompShg,6,1931,AllPub,0,Inside;Reg;4270;70,544,WD,3,Gd,0,Gable,774,0,GasA,0,1Fam,3,TA,1,1,Y,2007,,Y,MetalSd;TA;TA,1Story,6,ALQ
+House.37,SBrkr,Fa,TA,BrkTil,CompShg,5,1920,AllPub,0,Corner;Reg;10625;85,108,notWD,2,TA,0,Gable,835,0,GasA,0,1Fam,5,TA,1,1,Y,2010,Attchd,N,OtherSd;TA;TA,1Story,5,ALQ
+House.38,SBrkr,Ex,Gd,PConc,CompShg,5,2003,AllPub,132,Corner;Reg;8546;80,0,WD,2,TA,0,Gable,1121,64,GasA,0,1Fam,4,TA,1,2,Y,2010,Attchd,Y,VinylSd;TA;TA,1Story,5,Unf
+House.39,Fuse,TA,Fa,CBlock,CompShg,5,1951,AllPub,0,Inside;Reg;8877;67,836,notWD,2,TA,0,Gable,1220,0,GasA,0,1Fam,4,NA,1,1,Y,2006,Detchd,Y,OtherSd;TA;TA,1Story,6,BLQ
+House.40,SBrkr,Ex,Ex,PConc,CompShg,5,2007,AllPub,208,Inside;IR1;40094;130,2260,notWD,3,Ex,1,notGable,4676,406,GasA,1,1Fam,10,TA,1,3,Y,2007,Attchd,Y,OtherSd;TA;Gd,2Story,11,GLQ
+House.41,SBrkr,Ex,TA,PConc,CompShg,6,1954,AllPub,0,Inside;Reg;8172;60,0,WD,4,TA,0,Gable,1470,0,GasA,0,1Fam,4,TA,1,2,Y,2008,Detchd,Y,MetalSd;TA;TA,1.5Story,7,Unf
+House.42,Fuse,TA,TA,BrkTil,CompShg,3,1914,AllPub,0,Inside;Reg;8248;45,41,WD,2,TA,0,Gable,864,0,GasA,0,1Fam,3,TA,1,1,N,2008,,N,OtherSd;TA;TA,1Story,5,BLQ
+House.43,SBrkr,Ex,TA,CBlock,CompShg,5,1940,AllPub,158,Inside;IR1;12342;NA,262,WD,1,TA,0,Gable,861,0,GasA,0,1Fam,4,TA,1,1,Y,2009,Detchd,Y,VinylSd;TA;TA,1Story,4,BLQ
+House.44,SBrkr,TA,TA,CBlock,CompShg,7,1955,AllPub,0,Inside;Reg;8172;60,167,WD,2,TA,0,notGable,864,0,GasA,0,1Fam,5,TA,1,1,N,2006,Detchd,Y,OtherSd;TA;TA,1Story,5,ALQ
+House.45,SBrkr,TA,TA,BrkTil,CompShg,6,1925,AllPub,147,Inside;Reg;6629;54,551,WD,3,TA,0,notGable,1369,0,GasA,0,1Fam,6,TA,1,2,Y,2009,Detchd,N,OtherSd;Gd;TA,2Story,6,BLQ
