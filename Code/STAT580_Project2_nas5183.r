@@ -1,5 +1,7 @@
 library(caret) # For dummyVars()
+library(glmnet) # For Ridge Regression and Lasso
 library(ggpubr)
+library(leaps) # For regsubsets()
 library(tidyverse)
 
 # Read in the source data files.
@@ -40,11 +42,13 @@ df_neighborhoods_separate_test <- df_neighborhoods_test %>% separate(Exterior, e
 df_neighborhoods_separate[,c("LotArea","LotFrontage")] <- sapply(df_neighborhoods_separate[,c("LotArea","LotFrontage")], as.integer)
 df_neighborhoods_separate_test[,c("LotArea","LotFrontage")] <- sapply(df_neighborhoods_separate_test[,c("LotArea","LotFrontage")], as.integer)
 
+# De-duplicating records (rows 115, 116, and 279 are duplicates). We only perform this for training data because we do not want to remove records from test data.
+df_neighborhoods_dedupe <- unique(df_neighborhoods_separate)
 
 # Fill in "NA" for empty strings in `BsmtQual`, `BsmtFinType1`, and `GarageType`.
 # Also replace the empty `LotFR3` columns with 0. We will assume they do not have frontage on 3 sides.
 empty_string_cols <- c("BsmtQual","BsmtFinType1","GarageType")
-df_neighborhoods_impute <- df_neighborhoods_separate %>% 
+df_neighborhoods_impute <- df_neighborhoods_dedupe %>% 
                             mutate_at(empty_string_cols, ~replace(., . == "", "NA")) %>%
                             mutate_at("BsmtCond", ~replace(., is.na(.), "NA")) %>%
                             mutate_at("LotFrontage", ~replace(., is.na(.), 0)
@@ -90,9 +94,22 @@ ggarrange(
 df_neighborhoods_cleaned <- df_neighborhoods_impute[-which(df_neighborhoods_impute$YrSold == 2001) , !names(df_neighborhoods_impute) == "Utilities"]
 df_neighborhoods_cleaned_test <- df_neighborhoods_impute_test[ , !names(df_neighborhoods_impute) == "Utilities"] # There is no `YrSold` == 2001 record to remove from the test data.
 
+# Encodes the categorical variables
+dmy <- dummyVars(" ~ .", data = df_neighborhoods_cleaned[, !names(df_neighborhoods_cleaned) == "SalePrice"])
+df_neighborhoods_final <- cbind(data.frame(predict(dmy, newdata = df_neighborhoods_cleaned)), df_neighborhoods_cleaned$SalePrice)
+names(df_neighborhoods_final)[names(df_neighborhoods_final) == "df_neighborhoods_cleaned$SalePrice"] <- "SalePrice"
 
-df_neighborhoods_scaled <- df_neighborhoods_cleaned %>% mutate_if(is.numeric, scale)
-df_neighborhoods_scaled_test <- df_neighborhoods_cleaned_test %>% mutate_if(is.numeric, scale)
+df_neighborhoods_final_test <- data.frame(predict(dmy, newdata = df_neighborhoods_cleaned_test))
+
+
+# Pulling a list of dummy variable column names so we can exclude them from standardization.
+dummyVarNames <- names(df_neighborhoods_final)[!(names(df_neighborhoods_final) %in% names(df_neighborhoods_cleaned))]
+
+# Creating scaled versions for Ridge Regression and Lasso, excluding the dummy variable names
+df_neighborhoods_scaled <- cbind(df_neighborhoods_cleaned[, -which(names(df_neighborhoods_cleaned) %in% c('SalePrice'))] %>% mutate_if(is.numeric, scale) %>% mutate_if(is.character, as.factor), df_neighborhoods_cleaned$SalePrice)
+names(df_neighborhoods_scaled)[names(df_neighborhoods_scaled) == "df_neighborhoods_cleaned$SalePrice"] <- "SalePrice"
+
+df_neighborhoods_scaled_test <- df_neighborhoods_cleaned_test[, -which(names(df_neighborhoods_cleaned_test) %in% c('SalePrice'))] %>% mutate_if(is.numeric, scale) %>% mutate_if(is.character, as.factor)
 
 num_cols <- colnames(select_if(df_neighborhoods_scaled, is.numeric))
 
@@ -125,16 +142,100 @@ ggarrange(
 # Not needed for now, but will find the names of non-numeric columns.
 # non_num_cols <- colnames(select_if(df_neighborhoods_scaled, negate(is.numeric)))
 
-# Encodes the categorical 
-dmy <- dummyVars(" ~ .", data = df_neighborhoods_scaled[, !names(df_neighborhoods_scaled) == "SalePrice"])
-df_neighborhoods_final <- cbind(data.frame(predict(dmy, newdata = df_neighborhoods_scaled)), df_neighborhoods_scaled$SalePrice)
-names(df_neighborhoods_final)[names(df_neighborhoods_final) == "df_neighborhoods_scaled$SalePrice"] <- "SalePrice"
-write.csv(df_neighborhoods_final, '../df_neighborhoods_final.csv')
 
-df_neighborhoods_final_test <- data.frame(predict(dmy, newdata = df_neighborhoods_scaled_test))
+
+#write.csv(df_neighborhoods_final, '../df_neighborhoods_final.csv')
+
+
 
 # Saving this code in case we need to just change variables to factors instead of encoding.
 # str(df_neighborhoods_scaled %>% mutate_if(negate(is.numeric), as.factor))
 
 
 str(df_neighborhoods_scaled_test %>% mutate_if(negate(is.numeric), as.factor))
+
+
+
+## Variable Selection
+
+
+# Forward Stepwise Selection
+regit.fwd <- regsubsets(SalePrice~.,data=df_neighborhoods_final, nvmax=85, method="forward")
+regit.fwd.summary <- summary(regit.fwd)
+
+min_cp.fwd <- which.min(regit.fwd.summary$cp)
+min_bic.fwd <- which.min(regit.fwd.summary$bic)
+max_adjr2.fwd <- which.max(regit.fwd.summary$adjr2)
+
+plot(regit.fwd.summary$rss, xlab="Number of Variables", ylab="RSS", type="l")
+
+plot(regit.fwd.summary$adjr2, xlab="Number of Variables", ylab="Adjusted RSq", type="l")
+points(max_adjr2.fwd, regit.fwd.summary$adjr2[max_adjr2.fwd], col="red", cex=2, pch=20)
+
+plot(regit.fwd.summary$cp, xlab="Number of Variables", ylab="Cp", type="l")
+points(min_cp.fwd, regit.fwd.summary$cp[min_cp.fwd], col="red", cex=2, pch=20)
+
+plot(regit.fwd.summary$bic, xlab="Number of Variables", ylab="BIC", type="l")
+points(min_bic.fwd, regit.fwd.summary$bic[min_bic.fwd], col="red", cex=2, pch=20)
+
+# Backward stepwise selection.
+regit.bwd <- regsubsets(SalePrice~.,data=df_neighborhoods_final, nvmax=85, method="backward")
+regit.bwd.summary <- summary(regit.bwd)
+
+min_cp.bwd <- which.min(regit.bwd.summary$cp)
+min_bic.bwd <- which.min(regit.bwd.summary$bic)
+max_adjr2.bwd <- which.max(regit.bwd.summary$adjr2)
+
+plot(regit.bwd.summary$rss, xlab="Number of Variables", ylab="RSS", type="l")
+
+plot(regit.bwd.summary$adjr2, xlab="Number of Variables", ylab="Adjusted RSq", type="l")
+points(max_adjr2.bwd, regit.bwd.summary$adjr2[max_adjr2.bwd], col="red", cex=2, pch=20)
+
+plot(regit.bwd.summary$cp, xlab="Number of Variables", ylab="Cp", type="l")
+points(min_cp.bwd, regit.bwd.summary$cp[min_cp.bwd], col="red", cex=2, pch=20)
+
+plot(regit.bwd.summary$bic, xlab="Number of Variables", ylab="BIC", type="l")
+points(min_bic.bwd, regit.bwd.summary$bic[min_bic.bwd], col="red", cex=2, pch=20)
+
+
+# Ridge Regression
+x.train <- model.matrix(SalePrice~.,df_neighborhoods_scaled)[,-1]
+y.train <- df_neighborhoods_scaled$SalePrice
+
+grid=10^seq(10,-2,length=100)
+ridge.mod=glmnet(x.train,y.train,alpha=0,lambda=grid)
+
+set.seed(1)
+cv.out=cv.glmnet(x.train,y.train,alpha=0)
+plot(cv.out)
+
+bestlam=cv.out$lambda.min
+bestlam
+
+out=glmnet(x.train,y.train,alpha=0)
+predict(out,type="coefficients",s=bestlam)
+
+ridge.pred <- predict(ridge.mod, s = bestlam, newx = x.train)
+mean((ridge.pred - y.train)^2)
+
+
+# Lasso
+x.train <- model.matrix(SalePrice~.,df_neighborhoods_scaled)[,-1]
+y.train <- df_neighborhoods_scaled$SalePrice
+
+lasso.mod=glmnet(x.train,y.train,alpha=1,lambda=grid)
+plot(lasso.mod)
+
+set.seed(1)
+cv.out=cv.glmnet(x.train,y.train,alpha=1)
+plot(cv.out)
+
+bestlam=cv.out$lambda.min
+bestlam
+
+out=glmnet(x.train,y.train,alpha=1,lambda=grid)
+lasso.coef=predict(out,type="coefficients",s=bestlam)
+lasso.coef
+
+lasso.pred <- predict(lasso.mod, s = bestlam, newx = x.train)
+mean((lasso.pred - y.train)^2)
