@@ -228,10 +228,10 @@ linear_forward_cp_model.pred <- predict(linear_forward_cp_model, df_neighborhood
 linear_forward_bic_model.pred <- predict(linear_forward_bic_model, df_neighborhoods_final_validation)
 linear_forward_adjr2_model.pred <- predict(linear_forward_adjr2_model, df_neighborhoods_final_validation)
 
-#### Calculating MSE for each model
-mse_linear_forward_cp_model <- c("Linear Forward Selected Cp",mean((linear_forward_cp_model.pred - df_neighborhoods_final_validation$SalePrice)^2)) # 1006790081
-mse_linear_forward_bic_model <- c("Linear Forward Selected BIC",mean((linear_forward_bic_model.pred - df_neighborhoods_final_validation$SalePrice)^2)) # 956447763
-mse_linear_forward_adjr2_model <- c("Linear Forward Selected Adj R^2",mean((linear_forward_adjr2_model.pred - df_neighborhoods_final_validation$SalePrice)^2)) # 1068484673
+### Calculating MSE for each model
+mse_linear_forward_cp_model <- c("Linear Forward Selected Cp",mean((linear_forward_cp_model.pred - df_neighborhoods_final_validation$SalePrice)^2),"Linear Regression") # 1006790081
+mse_linear_forward_bic_model <- c("Linear Forward Selected BIC",mean((linear_forward_bic_model.pred - df_neighborhoods_final_validation$SalePrice)^2),"Linear Regression") # 956447763
+mse_linear_forward_adjr2_model <- c("Linear Forward Selected Adj R^2",mean((linear_forward_adjr2_model.pred - df_neighborhoods_final_validation$SalePrice)^2),"Linear Regression") # 1068484673
 
 
 ## Backward stepwise selection.
@@ -269,9 +269,9 @@ linear_backward_bic_model.pred <- predict(linear_backward_bic_model, df_neighbor
 linear_backward_adjr2_model.pred <- predict(linear_backward_adjr2_model, df_neighborhoods_final_validation)
 
 ### Calculating MSE for each model
-mse_linear_backward_cp_model <- c("Linear Backward Selected Cp",mean((linear_backward_cp_model.pred - df_neighborhoods_final_validation$SalePrice)^2)) # 902472200
-mse_linear_backward_bic_model <- c("Linear Backward Selected BIC",mean((linear_backward_bic_model.pred - df_neighborhoods_final_validation$SalePrice)^2)) # 867542533
-mse_linear_backward_adjr2_model <- c("Linear Backward Selected Adj R^2",mean((linear_backward_adjr2_model.pred - df_neighborhoods_final_validation$SalePrice)^2)) # 915621549
+mse_linear_backward_cp_model <- c("Linear Backward Selected Cp",mean((linear_backward_cp_model.pred - df_neighborhoods_final_validation$SalePrice)^2),"Linear Regression") # 902472200
+mse_linear_backward_bic_model <- c("Linear Backward Selected BIC",mean((linear_backward_bic_model.pred - df_neighborhoods_final_validation$SalePrice)^2),"Linear Regression") # 867542533
+mse_linear_backward_adjr2_model <- c("Linear Backward Selected Adj R^2",mean((linear_backward_adjr2_model.pred - df_neighborhoods_final_validation$SalePrice)^2),"Linear Regression") # 915621549
 
 
 ## Ridge Regression
@@ -295,7 +295,7 @@ x.validation <- model.matrix(SalePrice~.,df_neighborhoods_scaled_validation)[,-1
 y.validation <- df_neighborhoods_scaled_validation$SalePrice
 
 ridge.pred <- predict(ridge.mod, s = bestlam, newx = x.validation)
-mse_ridge_regression <- c("Ridge Regression",mean((ridge.pred - y.validation)^2)) # 1,548,617,820
+mse_ridge_regression <- c("Ridge Regression",mean((ridge.pred - y.validation)^2),"Shrinkage") # 1,548,617,820
 
 
 # Lasso
@@ -320,7 +320,7 @@ x.validation <- model.matrix(SalePrice~.,df_neighborhoods_scaled_validation)[,-1
 y.validation <- df_neighborhoods_scaled_validation$SalePrice
 
 lasso.pred <- predict(lasso.mod, s = bestlam, newx = x.validation)
-mse_lasso <- c("Lasso",mean((lasso.pred - y.validation)^2)) # 1,800,027,642
+mse_lasso <- c("Lasso",mean((lasso.pred - y.validation)^2),"Shrinkage") # 1,800,027,642
 
 
 # Elastic Net
@@ -348,15 +348,15 @@ x.validation <- model.matrix(SalePrice~.,df_neighborhoods_scaled_validation)[,-1
 y.validation <- df_neighborhoods_scaled_validation$SalePrice
 
 elastic_net.pred <- elastic_net_model %>% predict(x.validation)
-mse_elastic_net <- c("Elastic Net",mean((elastic_net.pred - y.validation)^2)) #983,506,727.699282
+mse_elastic_net <- c("Elastic Net",mean((elastic_net.pred - y.validation)^2),"Shrinkage") #983,506,727.699282
 
 # Random Forest Regression
 library(randomForest)
 set.seed(580)
 
-rf.neighborhoods <- randomForest(SalePrice~., data = df_neighborhoods_final_train, mtry=85, importance=TRUE, ntree=100)
+rf.neighborhoods <- randomForest(SalePrice~., data = df_neighborhoods_final_train, importance=TRUE, ntree=100)
 rf.pred <- predict(rf.neighborhoods, newdata = df_neighborhoods_final_validation)
-mse_random_forest <- mean((rf.pred - y.validation)^2) #703846773
+mse_random_forest <- c("Random Forest",mean((rf.pred - y.validation)^2),"Decision Tree") #731,087,965
 
 importance(rf.neighborhoods)
 
@@ -365,6 +365,7 @@ importance(rf.neighborhoods)
 # Model Selection
 ###############################################
 
+## Combine the MSE resuts into one dataframe
 df_mse <- data.frame(rbind(mse_linear_forward_cp_model,
                 mse_linear_forward_bic_model,
                 mse_linear_forward_adjr2_model,
@@ -372,9 +373,15 @@ df_mse <- data.frame(rbind(mse_linear_forward_cp_model,
                 mse_linear_backward_bic_model,
                 mse_linear_backward_adjr2_model,
                 mse_ridge_regression,
+                mse_random_forest,
                 mse_lasso,
                 mse_elastic_net))
 
-colnames(df_mse) <- c("Model", "Mean Squared Error")
+## Rename the columns
+colnames(df_mse) <- c("Model", "Mean Squared Error", "Family")
 df_mse$`Mean Squared Error` <- as.numeric(df_mse$`Mean Squared Error`)
+
+# Sort 
 df_mse %>% arrange(`Mean Squared Error`)
+
+ggplot(df_mse, aes(x = reorder(Model, `Mean Squared Error`), y = `Mean Squared Error`, fill = Family)) + geom_bar(stat = "identity")
