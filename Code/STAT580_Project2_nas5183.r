@@ -376,7 +376,7 @@ y.train <- df_neighborhoods_final_validation$SalePrice
 dtrain <- xgb.DMatrix(data = x.train,label = y.train)
 dvalidation <- xgb.DMatrix(data = x.validation, label = y.validation)
 
-# Create hyperparameter grid
+## Create hyperparameter grid
 hyper_grid <- expand.grid(max_depth = seq(3, 6, 1), eta = seq(.2, .35, .01))  
 
 
@@ -403,6 +403,7 @@ for (j in 1:nrow(hyper_grid)) {
   cat(j, "\n")
 } 
 
+## Pulling the tuned parameters.
 best_max_depth <- hyper_grid[which.min(xgb_test_rmse), ]$max_depth
 best_eta <- hyper_grid[which.min(xgb_test_rmse), ]$eta
 
@@ -446,4 +447,5 @@ df_mse$`Mean Squared Error` <- as.numeric(df_mse$`Mean Squared Error`)
 # Sort 
 df_mse %>% arrange(`Mean Squared Error`)
 
-ggplot(df_mse, aes(x = `Mean Squared Error`, y = reorder(Model, `Mean Squared Error`), fill = Family)) + geom_bar(stat = "identity")
+ggplot(df_mse, aes(x = `Mean Squared Error`, y = reorder(Model, `Mean Squared Error`), fill = Family)) + geom_bar(stat = "identity") +
+  ylab("Predictive Model")
