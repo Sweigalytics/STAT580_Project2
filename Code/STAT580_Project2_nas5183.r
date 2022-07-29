@@ -4,6 +4,7 @@ library(glmnet) # For Ridge Regression and Lasso
 library(ggpubr)
 library(leaps) # For regsubsets()
 library(tidyverse)
+library(xgboost)
 
 ###############################################
 # 1. Data Ingestion, Cleaning, and Feature Engineering
@@ -281,7 +282,7 @@ y.train <- df_neighborhoods_scaled_train$SalePrice
 grid=10^seq(10,-2,length=100)
 ridge.mod=glmnet(x.train,y.train,alpha=0,lambda=grid)
 
-set.seed(1)
+set.seed(580)
 cv.out=cv.glmnet(x.train,y.train,alpha=0)
 plot(cv.out)
 
@@ -305,7 +306,7 @@ y.train <- df_neighborhoods_scaled_train$SalePrice
 lasso.mod=glmnet(x.train,y.train,alpha=1,lambda=grid)
 plot(lasso.mod)
 
-set.seed(1)
+set.seed(580)
 cv.out=cv.glmnet(x.train,y.train,alpha=1)
 plot(cv.out)
 
@@ -348,7 +349,8 @@ x.validation <- model.matrix(SalePrice~.,df_neighborhoods_scaled_validation)[,-1
 y.validation <- df_neighborhoods_scaled_validation$SalePrice
 
 elastic_net.pred <- elastic_net_model %>% predict(x.validation)
-mse_elastic_net <- c("Elastic Net",mean((elastic_net.pred - y.validation)^2),"Shrinkage") #983,506,727.699282
+mse_elastic_net <- c("Elastic Net",mean((elastic_net.pred - y.validation)^2),"Shrinkage")
+
 
 # Random Forest Regression
 library(randomForest)
@@ -361,11 +363,70 @@ mse_random_forest <- c("Random Forest",mean((rf.pred - y.validation)^2),"Decisio
 importance(rf.neighborhoods)
 
 
+# XGBoost
+
+## Found a great tuning tutorial here: https://www.r-bloggers.com/2020/11/r-xgboost-regression/
+
+x.train <- model.matrix(SalePrice~.,df_neighborhoods_final_train)[,-1]
+y.train <- df_neighborhoods_final_train$SalePrice
+
+x.validation <- model.matrix(SalePrice~.,df_neighborhoods_final_validation)[,-1]
+y.train <- df_neighborhoods_final_validation$SalePrice
+
+dtrain <- xgb.DMatrix(data = x.train,label = y.train)
+dvalidation <- xgb.DMatrix(data = x.validation, label = y.validation)
+
+# Create hyperparameter grid
+hyper_grid <- expand.grid(max_depth = seq(3, 6, 1), eta = seq(.2, .35, .01))  
+
+
+xgbcv <- xgb.cv( params = params, data = dtrain, label=df_neighborhoods_final_train$SalePrice, nrounds = 100, nfold = 5, showsd = T, stratified = T, print_every_n = 10, early_stop_round = 20, maximize = F)
+
+xgb_train_rmse <- NULL
+xgb_test_rmse <- NULL
+
+for (j in 1:nrow(hyper_grid)) {
+  set.seed(580)
+  m_xgb_untuned <- xgb.cv(
+    data = dtrain,
+    nrounds = 1000,
+    objective = "reg:squarederror",
+    early_stopping_rounds = 3,
+    nfold = 5,
+    max_depth = hyper_grid$max_depth[j],
+    eta = hyper_grid$eta[j]
+  )
+  
+  xgb_train_rmse[j] <- m_xgb_untuned$evaluation_log$train_rmse_mean[m_xgb_untuned$best_iteration]
+  xgb_test_rmse[j] <- m_xgb_untuned$evaluation_log$test_rmse_mean[m_xgb_untuned$best_iteration]
+  
+  cat(j, "\n")
+} 
+
+best_max_depth <- hyper_grid[which.min(xgb_test_rmse), ]$max_depth
+best_eta <- hyper_grid[which.min(xgb_test_rmse), ]$eta
+
+set.seed(580)
+
+m1_xgb <-
+  xgboost(
+    data = dtrain,
+    nrounds = 1000,
+    objective = "reg:squarederror",
+    early_stopping_rounds = 3,
+    max_depth = best_max_depth,
+    eta = best_eta
+  )   
+
+xg.pred <- predict(m1_xgb, dvalidation)
+
+mse_xgboost <- c("XGBoost",mean((xg.pred - y.validation)^2),"Decision Tree")
+
 ###############################################
 # Model Selection
 ###############################################
 
-## Combine the MSE resuts into one dataframe
+## Combine the MSE results into one dataframe
 df_mse <- data.frame(rbind(mse_linear_forward_cp_model,
                 mse_linear_forward_bic_model,
                 mse_linear_forward_adjr2_model,
@@ -375,7 +436,8 @@ df_mse <- data.frame(rbind(mse_linear_forward_cp_model,
                 mse_ridge_regression,
                 mse_random_forest,
                 mse_lasso,
-                mse_elastic_net))
+                mse_elastic_net,
+                mse_xgboost))
 
 ## Rename the columns
 colnames(df_mse) <- c("Model", "Mean Squared Error", "Family")
@@ -384,4 +446,4 @@ df_mse$`Mean Squared Error` <- as.numeric(df_mse$`Mean Squared Error`)
 # Sort 
 df_mse %>% arrange(`Mean Squared Error`)
 
-ggplot(df_mse, aes(x = reorder(Model, `Mean Squared Error`), y = `Mean Squared Error`, fill = Family)) + geom_bar(stat = "identity")
+ggplot(df_mse, aes(x = `Mean Squared Error`, y = reorder(Model, `Mean Squared Error`), fill = Family)) + geom_bar(stat = "identity")
