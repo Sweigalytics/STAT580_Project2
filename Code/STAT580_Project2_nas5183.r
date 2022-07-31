@@ -1,4 +1,5 @@
 library(caret) # For dummyVars()
+library(DiagrammeR) # To plot XGBoost
 library(e1071) # For SVR
 library(glmnet) # For Ridge Regression and Lasso
 library(ggpubr)
@@ -371,7 +372,7 @@ x.train <- model.matrix(SalePrice~.,df_neighborhoods_final_train)[,-1]
 y.train <- df_neighborhoods_final_train$SalePrice
 
 x.validation <- model.matrix(SalePrice~.,df_neighborhoods_final_validation)[,-1]
-y.train <- df_neighborhoods_final_validation$SalePrice
+y.validation <- df_neighborhoods_final_validation$SalePrice
 
 dtrain <- xgb.DMatrix(data = x.train,label = y.train)
 dvalidation <- xgb.DMatrix(data = x.validation, label = y.validation)
@@ -449,3 +450,8 @@ df_mse %>% arrange(`Mean Squared Error`)
 
 ggplot(df_mse, aes(x = `Mean Squared Error`, y = reorder(Model, `Mean Squared Error`), fill = Family)) + geom_bar(stat = "identity") +
   ylab("Predictive Model")
+
+write.csv(df_mse %>% arrange(`Mean Squared Error`),'../Presentation/model_results.csv')
+
+# We select the XGBoost because it has the lowest MSE.
+xgb.plot.tree(model = m1_xgb, trees = 1)
