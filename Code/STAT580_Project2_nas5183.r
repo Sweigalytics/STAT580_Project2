@@ -121,8 +121,18 @@ df_neighborhoods_final_validation <- res$validate
 # Setting the training dataframe
 df_neighborhoods_final_train <- res$train
 
+# The test data only contains `RoofMatl` of "CompShg", so we need to briefly combine it with the training data to convince R it has more than one factor to convert dummy variables.
+# Training data does not have UniqueIDs, so we will filter to only those without NA UniqueIDs after converting to dummy variables.
+stage_to_combine_train <- select(df_neighborhoods_cleaned, -SalePrice) %>% mutate(uniqueID = NA)
+stage_to_combine_train <- stage_to_combine_train[, sort(colnames(stage_to_combine_train))]
 
-df_neighborhoods_final_test <- data.frame(predict(dmy, newdata = df_neighborhoods_cleaned_test))
+stage_df_neighborhoods_final_test <- data.frame(rbind(stage_to_combine_train, df_neighborhoods_cleaned_test))
+
+stage_pred <- select(stage_df_neighborhoods_final_test, -uniqueID)
+
+df_neighborhoods_final_test <- data.frame(cbind(stage_df_neighborhoods_final_test$uniqueID,predict(dmy, newdata = stage_pred))) %>% rename(uniqueID = V1) %>% drop_na(uniqueID) 
+cols_to_convert_to_numeric <- colnames(df_neighborhoods_final_test)[!(colnames(df_neighborhoods_final_test) == "uniqueID")]
+df_neighborhoods_final_test <- df_neighborhoods_final_test %>% mutate_at(cols_to_convert_to_numeric, as.numeric)
 
 
 # Pulling a list of dummy variable column names so we can exclude them from standardization.
@@ -424,6 +434,7 @@ xg.pred <- predict(m1_xgb, dvalidation)
 
 mse_xgboost <- c("XGBoost",mean((xg.pred - y.validation)^2),"Decision Tree")
 
+
 ###############################################
 # Model Selection
 ###############################################
@@ -454,4 +465,16 @@ ggplot(df_mse, aes(x = `Mean Squared Error`, y = reorder(Model, `Mean Squared Er
 write.csv(df_mse %>% arrange(`Mean Squared Error`),'../Presentation/model_results.csv')
 
 # We select the XGBoost because it has the lowest MSE.
-xgb.plot.tree(model = m1_xgb, trees = 1)
+xgb.plot.tree(model = m1_xgb, trees = 988)
+
+
+###############################################
+# Predictions
+###############################################
+
+x.test <- as.matrix(select(df_neighborhoods_final_test, -uniqueID))
+
+xg.pred.test <- predict(m1_xgb, x.test)
+
+xg.final.preds <- data.frame(cbind(df_neighborhoods_final_test$uniqueID,xg.pred.test)) %>% rename(uniqueID = V1, SalePrice = xg.pred.test) %>% mutate_at(c('SalePrice'), as.numeric) %>% mutate(SalePrice = round(SalePrice, 2))
+xg.final.preds
