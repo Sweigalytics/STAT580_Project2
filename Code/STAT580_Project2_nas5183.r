@@ -435,6 +435,7 @@ xg.pred <- predict(m1_xgb, dvalidation)
 mse_xgboost <- c("XGBoost",mean((xg.pred - y.validation)^2),"Decision Tree")
 
 
+
 ###############################################
 # Model Selection
 ###############################################
@@ -460,12 +461,17 @@ df_mse$`Mean Squared Error` <- as.numeric(df_mse$`Mean Squared Error`)
 df_mse %>% arrange(`Mean Squared Error`)
 
 ggplot(df_mse, aes(x = `Mean Squared Error`, y = reorder(Model, `Mean Squared Error`), fill = Family)) + geom_bar(stat = "identity") +
-  ylab("Predictive Model")
+  ylab("Predictive Model") +
+  theme(text=element_text(family))
 
 write.csv(df_mse %>% arrange(`Mean Squared Error`),'../Presentation/model_results.csv')
 
 # We select the XGBoost because it has the lowest MSE.
-xgb.plot.tree(model = m1_xgb, trees = 988)
+xgb.plot.tree(model = m1_xgb, trees = 0)
+
+importance_matrix <- xgb.importance(model = m1_xgb)
+xgb.plot.importance(importance_matrix, xlab = "Feature Importance")
+write.csv(data.frame(importance_matrix)[, c('Feature','Importance')],'../Presentation/xgb_feature_importance.csv', quote = FALSE, row.names = FALSE)
 
 
 ###############################################
@@ -477,4 +483,5 @@ x.test <- as.matrix(select(df_neighborhoods_final_test, -uniqueID))
 xg.pred.test <- predict(m1_xgb, x.test)
 
 xg.final.preds <- data.frame(cbind(df_neighborhoods_final_test$uniqueID,xg.pred.test)) %>% rename(uniqueID = V1, SalePrice = xg.pred.test) %>% mutate_at(c('SalePrice'), as.numeric) %>% mutate(SalePrice = round(SalePrice, 2))
-xg.final.preds
+
+write.csv(xg.final.preds, '../Predictions/STAT_508_Project_2_Neil_Sweigard_predictions.csv', quote = FALSE, row.names = FALSE)
