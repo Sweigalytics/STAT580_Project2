@@ -469,9 +469,26 @@ write.csv(df_mse %>% arrange(`Mean Squared Error`),'../Presentation/model_result
 # We select the XGBoost because it has the lowest MSE.
 xgb.plot.tree(model = m1_xgb, trees = 0)
 
+# Exporting the feature importance.
 importance_matrix <- xgb.importance(model = m1_xgb)
 xgb.plot.importance(importance_matrix, xlab = "Feature Importance")
 write.csv(data.frame(importance_matrix)[, c('Feature','Importance')],'../Presentation/xgb_feature_importance.csv', quote = FALSE, row.names = FALSE)
+
+
+title <- "eXtreme Gradient Boosting"
+
+# Residuals Plot
+r <- y.validation - xg.pred
+plot(r, ylab = "residuals", main = paste(title, " Residuals", sep=""))
+
+# Predictions vs. Actual Plot
+plot(y.validation,
+     xg.pred,
+     xlab = "actual",
+     ylab = "predicted",
+     main = paste(title, " Fits", sep=""))
+abline(lm(xg.pred ~ y.validation))
+
 
 
 ###############################################
